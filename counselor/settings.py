@@ -16,7 +16,11 @@ NEWSPIDER_MODULE = 'counselor.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-USER_AGENT = 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0'
+USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_3) AppleWebKit/536.5 (KHTML, like Gecko) Chrome/19.0.1084.54 Safari/536.5'
+KEEP_ALIVE = 'True'
+# ACCEPT = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+# Accept-Language = 'zh-CN,zh;q=0.8'
+
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = False
@@ -29,6 +33,8 @@ ROBOTSTXT_OBEY = False
 # See also autothrottle settings and docs
 #DOWNLOAD_DELAY = 3
 # The download delay setting will honor only one of:
+CONCURRENT_REQUESTS = 50
+# DOWNLOAD_TIMEOUT = 10
 #CONCURRENT_REQUESTS_PER_DOMAIN = 16
 #CONCURRENT_REQUESTS_PER_IP = 16
 

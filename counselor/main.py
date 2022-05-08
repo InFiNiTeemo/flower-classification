@@ -1,2 +1,2 @@
 from scrapy import cmdline
-cmdline.execute('scrapy crawl wikipieda_spider'.split())
+cmdline.execute('scrapy crawl wikipedia_plant_card_spider'.split())

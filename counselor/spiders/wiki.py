@@ -2,10 +2,11 @@
 import scrapy
 from scrapy.selector import Selector
 from items import ContentItem
-from queue import Queue
+from queue1 import Queue
 import time
 from langconv import *
 from filter_words import filter_url
+
 
 def Traditional2Simplified(sentence):
     '''
@@ -15,6 +16,7 @@ def Traditional2Simplified(sentence):
     '''
     sentence = Converter('zh-hans').convert(sentence)
     return sentence
+
 
 def split(url_list):
     '''
@@ -41,12 +43,24 @@ def filter(url):
 
 class WiKiSpider(scrapy.Spider):
     urlQueue = Queue()
-    name = 'wikipieda_spider'
+    name = 'wikipedia_spider'
     allowed_domains = ['zh.wikipedia.org']
     start_urls = ['https://zh.wikipedia.org/wiki/Category:%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BC%96%E7%A8%8B']
     custom_settings = {
-        'ITEM_PIPELINES': {'counselor.pipelines.WikiPipeline': 800}
+        'ITEM_PIPELINES': {'counselor.pipelines.WikiPipeline': 800},
+        # 'FEED_URI': './output.json'
     }
+
+    def request(self, url):
+        proxy = "https://127.0.0.1:7890"
+        if 'Category:' in url:
+            return scrapy.Request(url, callback=self.parse_category, dont_filter=True, meta={"proxy": proxy})
+        else:
+            return scrapy.Request(url, callback=self.parse_content, dont_filter=True, meta={"proxy": proxy})
+
+    def start_requests(self):  # 控制爬虫发出的第一个请求
+         proxy = "https://127.0.0.1:7890"
+         yield scrapy.Request(self.start_urls[0], meta={"proxy": proxy})
 
     # scrapy默认启动的用于处理start_urls的方法
     def parse(self, response):
@@ -62,13 +76,11 @@ class WiKiSpider(scrapy.Spider):
         this_url = response.url
         # self.urlQueue.delete_candidate(this_url)
         # self.start_urls = self.urlQueue.candidates
+        print('*'*40)
         # 说明该请求时一个分类
         print('this_url=', this_url)
         self.urlQueue.load_npy()
-        if 'Category:' in this_url:
-            yield scrapy.Request(this_url, callback=self.parse_category, dont_filter=True)
-        else:
-            yield scrapy.Request(this_url, callback=self.parse_content, dont_filter=True)
+        yield self.request(this_url)
 
 
     def parse_category(self, response):
@@ -80,6 +92,7 @@ class WiKiSpider(scrapy.Spider):
         counselor_item = ContentItem()
         sel = Selector(response)
         this_url = response.url
+
         self.urlQueue.delete_candidate(this_url)
         search = sel.xpath("//div[@id='content']")
         category_entity = search.xpath("//h1[@id='firstHeading']/text()").extract_first()
@@ -94,26 +107,19 @@ class WiKiSpider(scrapy.Spider):
                     candidate_lists.append('https://zh.wikipedia.org' + url)
         # self.start_urls = self.urlQueue.candidates
         cates_url, content_url = split(candidate_lists)
-        self.urlQueue.add_has_viewd(this_url)
+        self.urlQueue.add_has_viewed(this_url)
         self.urlQueue.add_candidates(content_url)
         self.urlQueue.add_candidates(cates_url)
-        print('候选请求数=', len(self.urlQueue.candidates))
-        print('已处理请求数=', len(self.urlQueue.has_viewd))
+        print('cat 候选请求数=', len(self.urlQueue.candidates))
+        print('cat 已处理请求数=', len(self.urlQueue.has_viewed))
         # 处理完分类页面后，将所有可能的内容请求链接直接提交处理队列处理
         if len(self.urlQueue.candidates) == 0:
-            # print(111111)
             self.crawler.engine.close_spider(self)
 
         for url in self.urlQueue.candidates:
-            if url in self.urlQueue.has_viewd:
+            if url in self.urlQueue.has_viewed:
                 continue
-            if 'Category:' in url:
-                # print(url)
-                yield scrapy.Request(url, callback=self.parse_category, dont_filter=True)
-                # pass
-            else:
-                yield scrapy.Request(url, callback=self.parse_content, dont_filter=True)
-
+            yield self.request(url)
 
     def parse_content(self, response):
         '''
@@ -121,6 +127,7 @@ class WiKiSpider(scrapy.Spider):
         :param response:
         :return:
         '''
+        # print('*'*40, response)
         counselor_item = ContentItem()
         sel = Selector(response)
         this_url = response.url
@@ -140,11 +147,11 @@ class WiKiSpider(scrapy.Spider):
         #             candidate_lists.append('https://zh.wikipedia.org' + url)
 
         # self.start_urls = self.urlQueue.candidates
-        self.urlQueue.add_has_viewd(this_url)
+        self.urlQueue.add_has_viewed(this_url)
         # self.urlQueue.add_candidates(candidate_lists)
-        print('候选请求数=', len(self.urlQueue.candidates))
-        print('已处理请求数=', len(self.urlQueue.has_viewd))
-        self.urlQueue.save_has_viewd()
+        print('content 候选请求数=', len(self.urlQueue.candidates))
+        print('content 已处理请求数=', len(self.urlQueue.has_viewed))
+        self.urlQueue.save_has_viewed()
         # 将当前页面的信息保存下来
         # print(content_entity)
         # 如果当前的content的标题或分类属于需要过滤的词（例如我们不想爬取跟游戏有关的，所以包含游戏的请求或分类都不保存）

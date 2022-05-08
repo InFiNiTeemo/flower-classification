@@ -97,10 +97,10 @@ https://zh.wikipedia.org/wiki/计算机学科
 &emsp;&emsp;本文则从上面提到的分类请求和内容请求两个请求为切入点进行，通过维基百科天然的分类索引来约束我们目标爬取的内容；为了避免请求的重复爬取，以及传统深搜面临的问题，本文使用scrapy框架自主实现了层次优先队列的爬虫方法。也许有的读者会想scrapy或其他框架可能提供了自带的队列机制，为什么要自己实现？因为在具体爬取时，我们更希望能够随时初始化队列，且能够保存到本地，在下次爬取时则直接将保存的队列再次初始化，避免再次爬取已爬取的页面。
 
 ####  2.1 创建队列
-&emsp;&emsp;python创建一个Queue类，该类用于**保存候选请求队列（candidates）**、**已爬取的请求队列（has_viewd）**，
+&emsp;&emsp;python创建一个Queue类，该类用于**保存候选请求队列（candidates）**、**已爬取的请求队列（has_viewed）**，
 
  - **候选队列（candidates）**：爬虫程序运行初期，需要手动在里面添加一个爬虫入口请求（建议只放一个）。如果放置的请求时分类请求，则爬虫会根据子分类依次进行层次遍历；如果放置的是内容请求，则程序只爬取该内容页面后自动终止；本文的scrapy程序中设定对candidates队列的检测，如果为空则停止爬虫程序；
- - **已爬取队列（has_viewd）**：每次处理一个请求后（不论是分类请求还是内容请求），都会将这个请求加入到已爬取队列中，每次在处理一个请求时都会判断当前的请求是否在这个队列中，如果已存在则不再执行爬取，减少重复的流量资源和时间消耗；
+ - **已爬取队列（has_viewed）**：每次处理一个请求后（不论是分类请求还是内容请求），都会将这个请求加入到已爬取队列中，每次在处理一个请求时都会判断当前的请求是否在这个队列中，如果已存在则不再执行爬取，减少重复的流量资源和时间消耗；
 
 &emsp;&emsp;队列类的源程序如下：
 
@@ -112,21 +112,21 @@ import os
 
 class Queue():
     candidates = [] # 保存候选的请求列表
-    has_viewd = [] # 保存已经被处理过的请求
-    save_every = 100 # has_viewd每100次执行一次保存
+    has_viewed = [] # 保存已经被处理过的请求
+    save_every = 100 # has_viewed每100次执行一次保存
     # 初始化时需要添加若干个入口请求
     candidates.append('https://zh.wikipedia.org/wiki/Category:%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BC%96%E7%A8%8B')
 
     def load_npy(self): # 用于加载保存在本地的已爬取请求队列
-        if os.path.exists('../orgin_page/has_viewd.npy'):
-            self.has_viewd = np.load('../orgin_page/has_viewd.npy').tolist()
+        if os.path.exists('../orgin_page/has_viewed.npy'):
+            self.has_viewed = np.load('../orgin_page/has_viewed.npy').tolist()
 
-    def save_has_viewd(self): # 保存已经访问过的请求队列
-        np.save('../orgin_page/has_viewd.npy',self.has_viewd)
+    def save_has_viewed(self): # 保存已经访问过的请求队列
+        np.save('../orgin_page/has_viewed.npy',self.has_viewed)
 
     def add_candidate(self, url):
         # 注意，执行该函数说明获得了一个新的请求，需要待处理（从分类或内容页面解析得到的链接）
-        if url not in self.candidates and url not in self.has_viewd:
+        if url not in self.candidates and url not in self.has_viewed:
             self.candidates.append(url)
 
     def add_candidates(self, url_list):
@@ -139,17 +139,17 @@ class Queue():
         if url in self.candidates:
             self.candidates.remove(url)
 
-    def add_has_viewd(self, url):
+    def add_has_viewed(self, url):
         # 注意，执行该函数时，说明有进程已经收到请求，并进行了相关处理，现需要更新队列状态
-        if url not in self.candidates and url not in self.has_viewd:
+        if url not in self.candidates and url not in self.has_viewed:
             # 如果当前请求既不在候选列表，也不在已爬列表，则加入
-            self.has_viewd.append(url)
-        elif url in self.candidates and url not in self.has_viewd:
+            self.has_viewed.append(url)
+        elif url in self.candidates and url not in self.has_viewed:
             # 如果当前请求在候选列表中，且不在已爬列表，则说明有进程提前读取该页面，但候选列表还没更新，则加入
             # 并将候选列表对应的请求删除
-            self.has_viewd.append(url)
+            self.has_viewed.append(url)
             self.delete_candidate(url)
-        elif url in self.candidates and url in self.has_viewd:
+        elif url in self.candidates and url in self.has_viewed:
             # 如果当前请求在候选列表中，也在已爬列表中，则说明有进程已经完成了爬取，但候选列表没更新，则直接
             # 删掉候选列表中指定的请求
             self.delete_candidate(url)
@@ -162,7 +162,7 @@ class Queue():
 
  1. 定义一个WikiSpider类并继承scrapy.Spider，初始化Queue类对象，并将其candidates请求队列初始化到scrapy默认的启动列表（start_urls），注意scrapy框架的start_urls只会被处理一次，即便在程序运行中动态更新也不会影响爬虫的爬取，因此我们只使用start_urls作为启动的请求队列，后期爬虫获取的新请求全部来自于Queue类中的candidates；
  2. 重写sparse方法，该方法只会被执行一次，因此主要用于对start_urls的请求进行处理：如果当前请求URL包含“Category:”，则认为是分类请求，其将被转发至分类请求的处理函数；否则将视为内容请求，并转发至内容请求处理函数；
- 3. 创建分类请求处理函数parse_category和内容请求处理函数parse_content。对于parse_category方法中，爬取该分类页面，并获取对应的子分类请求和内容请求，加入到candidates中；对于parse_content，则只有内容，返回给pipelines执行页面数据的保存工作；所有处理的页面后都将加入到has_viewd已爬取队列中；
+ 3. 创建分类请求处理函数parse_category和内容请求处理函数parse_content。对于parse_category方法中，爬取该分类页面，并获取对应的子分类请求和内容请求，加入到candidates中；对于parse_content，则只有内容，返回给pipelines执行页面数据的保存工作；所有处理的页面后都将加入到has_viewed已爬取队列中；
 
 &emsp;&emsp;下面给出scrapy关键的两个代码：
 
@@ -235,10 +235,16 @@ class WiKiSpider(scrapy.Spider):
         # 说明该请求时一个分类
         print('this_url=', this_url)
         self.urlQueue.load_npy()
-        if 'Category:' in this_url:
-            yield scrapy.Request(this_url, callback=self.parse_category, dont_filter=True)
+        yield self.request(this_url)
+    
+    def request(self, url):
+        proxy = "http://127.0.0.1:7890"
+        if 'Category:' in url:
+            yield scrapy.Request(url, callback=self.parse_category, dont_filter=True, meta={"proxy": proxy})
         else:
-            yield scrapy.Request(this_url, callback=self.parse_content, dont_filter=True)
+            yield scrapy.Request(url, callback=self.parse_content, dont_filter=True, meta={"proxy": proxy})
+        
+        
 
     def parse_category(self, response):
         '''
@@ -263,24 +269,19 @@ class WiKiSpider(scrapy.Spider):
                     candidate_lists.append('https://zh.wikipedia.org' + url)
         # self.start_urls = self.urlQueue.candidates
         cates_url, content_url = split(candidate_lists)
-        self.urlQueue.add_has_viewd(this_url)
+        self.urlQueue.add_has_viewed(this_url)
         self.urlQueue.add_candidates(content_url)
         self.urlQueue.add_candidates(cates_url)
         print('候选请求数=', len(self.urlQueue.candidates))
-        print('已处理请求数=', len(self.urlQueue.has_viewd))
+        print('已处理请求数=', len(self.urlQueue.has_viewed))
         # 处理完分类页面后，将所有可能的内容请求链接直接提交处理队列处理
         if len(self.urlQueue.candidates) == 0:
             # print(111111)
             self.crawler.engine.close_spider(self)
         for url in self.urlQueue.candidates:
-            if url in self.urlQueue.has_viewd:
+            if url in self.urlQueue.has_viewed:
                 continue
-            if 'Category:' in url:
-                # print(url)
-                yield scrapy.Request(url, callback=self.parse_category, dont_filter=True)
-                # pass
-            else:
-                yield scrapy.Request(url, callback=self.parse_content, dont_filter=True)
+            yield self.request(this_url)
 
     def parse_content(self, response):
         '''
@@ -298,10 +299,10 @@ class WiKiSpider(scrapy.Spider):
         content_entity = Traditional2Simplified(content_entity)
         content_page = search.xpath("//div[@id='bodyContent']//div[@id='mw-content-text']//div[@class='mw-parser-output']").extract_first()# 将带有html的标签的整个数据拿下，后期做处理
         cates = search.xpath("//div[@id='catlinks']//ul//a/text()").extract()
-        self.urlQueue.add_has_viewd(this_url)
+        self.urlQueue.add_has_viewed(this_url)
         print('候选请求数=', len(self.urlQueue.candidates))
-        print('已处理请求数=', len(self.urlQueue.has_viewd))
-        self.urlQueue.save_has_viewd()
+        print('已处理请求数=', len(self.urlQueue.has_viewed))
+        self.urlQueue.save_has_viewed()
         # 将当前页面的信息保存下来
         # 如果当前的content的标题或分类属于需要过滤的词（例如我们不想爬取跟游戏有关的，所以包含游戏的请求或分类都不保存）
         is_url_filter = filter(content_entity)
