@@ -45,10 +45,11 @@ def filter(url):
     return False
 
 
-class WiKiSpider(scrapy.Spider):
+class GirlGallerySpider(scrapy.Spider):
     urlQueue = Queue()
-    name = 'wikipedia_plant_card_spider'
-    allowed_domains = ['zh.wikipedia.org']
+    base_url = "https://sxchinesegirlz.one"
+    name = 'girl_gallery_spider'
+    allowed_domains = [base_url]
     start_urls = []  # ['https://zh.wikipedia.org/wiki/Category:被子植物']
     # 每个pipeline后面有一个数值，这个数组的范围是0-1000，这个数值确定了他们的运行顺序，数字越小越优先
     custom_settings = {
@@ -56,7 +57,6 @@ class WiKiSpider(scrapy.Spider):
             #'scrapy.pipelines.images.ImagesPipeline': 1
             'counselor.pipelines.ImagePipeline': 300,
             'counselor.pipelines.WikiPipeline': 800
-
         },
         # 'FEED_URI': './output.json'
     }
@@ -75,11 +75,13 @@ class WiKiSpider(scrapy.Spider):
 
     def request(self, url, layer=0, par=""):
         proxy = "https://127.0.0.1:7890"
-        callback_func = self.parse_category if 'Category:' in url else self.parse_content
+        callback_func = self.parse_category if (
+                                self.base_url == url or 'page' in url) \
+                            else self.parse_content
         return scrapy.Request(url, callback=callback_func, dont_filter=True, meta={"proxy": proxy, "layer": layer, "par":par})
 
     def start_requests(self):  # 控制爬虫发出的第一个请求
-        self.start_urls = self.get_entry()
+        self.start_urls = [self.base_url]#self.get_entry()
         # print(self.start_urls)
         for url in self.start_urls:
             yield self.request(url)
@@ -92,7 +94,7 @@ class WiKiSpider(scrapy.Spider):
 
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
-        spider = super(WiKiSpider, cls).from_crawler(crawler, *args, **kwargs)
+        spider = super(GirlGallerySpider, cls).from_crawler(crawler, *args, **kwargs)
         crawler.signals.connect(spider.spider_closed, signal=signals.spider_closed)
         return spider
 
@@ -117,18 +119,16 @@ class WiKiSpider(scrapy.Spider):
 
         # self.urlQueue.delete_candidate(this_url)
         self.urlQueue.add_has_viewed(this_url)
-        search = sel.xpath("//div[@id='content']")
+        # search = sel.xpath("//div[@id='content']")
         # category_entity = search.xpath("//h1[@id='firstHeading']/text()").extract_first()
-        candidate_lists_ = search.xpath("//div[@id='mw-subcategories']//a/@href").extract()
+        candidate_lists_ = sel.xpath("//div[@id='page']//a/@href").extract()
         candidate_lists = []
         # 百科页面有许多超链接是锚链接，需要过滤掉
+        print(candidate_lists_)
 
         for url in candidate_lists_:
-            if filter(url): # 分类请求中过滤掉一些不符合的请求（例如明显包含游戏的关键词都不要爬取）
-                continue
-            if '/wiki' in url and 'https://zh.wikipedia.org' not in url:
-                if ':' not in url or (':' in url and self.cat_pattern in url):
-                    candidate_lists.append('https://zh.wikipedia.org' + Traditional2Simplified(parse.unquote(url)))
+            candidate_lists.append(Traditional2Simplified(parse.unquote(url)))
+            print(Traditional2Simplified(parse.unquote(url)))
 
         # self.start_urls = self.urlQueue.candidates
         # print(cat_str)
@@ -136,9 +136,9 @@ class WiKiSpider(scrapy.Spider):
         print('cat 已处理请求数=', len(self.urlQueue.has_viewed))
         # 处理完分类页面后，将所有可能的内容请求链接直接提交处理队列处理
 
-        if len(self.res) % 1000 == 0:
-            df = pd.DataFrame(self.res)
-            df.to_csv("Angiosperm Catalog {}.csv".format(len(self.res)))
+        #if len(self.res) % 1000 == 0:
+        #    df = pd.DataFrame(self.res)
+        #    df.to_csv("Angiosperm Catalog {}.csv".format(len(self.res)))
 
         for url in candidate_lists:
             if url in self.urlQueue.has_viewed:
