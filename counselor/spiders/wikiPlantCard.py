@@ -10,7 +10,9 @@ from filter_words import filter_url
 from urllib import parse
 import pandas as pd
 from CONSTANTS.constants import WIKI_PREFIX
-
+import random
+from datetime import datetime
+random.seed(datetime.now())
 
 def Traditional2Simplified(sentence):
     '''
@@ -171,8 +173,9 @@ class WiKiSpider(scrapy.Spider):
             text = ''.join(content.xpath("./div[@id='toc']/preceding-sibling::p").xpath("string(.)").extract()).strip("\n")
         pic_addr_list = table.xpath(".//a[@class='image']//img/@src").extract()
         pic_addr_list = list(map(lambda x: "https:"+x, pic_addr_list))
-        print(pic_addr_list)
+        #print(pic_addr_list)
         # print(table)
+
         counselor_item['img_url'] = pic_addr_list
         counselor_item['text'] = text
         counselor_item['topic'] = Traditional2Simplified(parse.unquote(this_url.split('/')[-1]))

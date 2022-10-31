@@ -150,9 +150,6 @@ class WiKiSpider(scrapy.Spider):
                 continue    
             yield self.request(url, layer+1, cat_str)
 
-
-
-
     def parse_content(self, response):
         '''
         处理百科页面请求

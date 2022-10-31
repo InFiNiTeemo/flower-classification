@@ -14,9 +14,12 @@ BOT_NAME = 'counselor'
 SPIDER_MODULES = ['counselor.spiders']
 NEWSPIDER_MODULE = 'counselor.spiders'
 
+#  items go through from lower valued to higher valued classes.
 ITEM_PIPELINES = {
-  #'scrapy.pipelines.images.ImagesPipeline':1
-   'counselor.pipelines.ImagePipeline': 300,
+   #'scrapy.pipelines.images.ImagesPipeline':1
+   'counselor.pipelines.GirlItemPipeline': 100,
+   'counselor.pipelines.GirlImagePipeline': 300,
+
    # 'counselor.pipelines.WikiPipeline': 800,
 }
 
@@ -31,7 +34,7 @@ FILES_STORE = 'images'
 ROBOTSTXT_OBEY = False
 
 #DOWNLOAD_DELAY = 3
-CONCURRENT_REQUESTS = 50
+CONCURRENT_REQUESTS = 128
 
 
 
