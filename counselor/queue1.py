@@ -5,12 +5,15 @@ import os
 class Queue():
     # def __int__(self):
     candidates = [] # 保存候选的请求列表
-    has_viewed = set() # 保存已经被处理过的请求
+    # has_viewed = set() # 保存已经被处理过的请求
     # self.max_num = max_num # 保存最多可
     save_every = 100 # has_viewed每100次执行一次保存以记录
     # 初始化时需要添加若干个入口请求
     candidates.append('https://www.baidu.com')
     candidates.append('https://zh.wikipedia.org/wiki/Category:%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BC%96%E7%A8%8B')
+
+    def __init__(self):
+        self.has_viewed = set()
 
     def load_npy(self):
         if not os.path.exists('../origin_page/has_viewed.npy'):

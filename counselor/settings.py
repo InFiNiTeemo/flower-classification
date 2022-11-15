@@ -11,6 +11,8 @@
 
 BOT_NAME = 'counselor'
 
+
+
 SPIDER_MODULES = ['counselor.spiders']
 NEWSPIDER_MODULE = 'counselor.spiders'
 
@@ -25,18 +27,21 @@ ITEM_PIPELINES = {
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_3) AppleWebKit/536.5 (KHTML, like Gecko) Chrome/19.0.1084.54 Safari/536.5'
+USER_AGENT = 'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/37.0.2049.0 Safari/537.36'
 KEEP_ALIVE = 'True'
-IMAGES_STORE = '../origin_page'
-FILES_STORE = 'images'
+IMAGES_STORE = '/home/mobius/data/girl_hd_pic'
+FILES_STORE = '/home/mobius/data/girl_hd_pic'
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = False
 
 #DOWNLOAD_DELAY = 3
-CONCURRENT_REQUESTS = 128
+CONCURRENT_REQUESTS = 16
+
+# AUTOTHROTTLE_ENABLED = True
+
+# 反爬
+#MEDIA_ALLOW_REDIRECTS = True
+#MEDIA_ALLOW_REDIRECTS =True
 
 
-
-
-AUTOTHROTTLE_ENABLED = True

@@ -14,3 +14,9 @@ class ContentItem(scrapy.Item):
     text = scrapy.Field()
     img_url = scrapy.Field()
 
+class PicItem(scrapy.Item):
+    # define the fields for your item here like:
+    topic = scrapy.Field()  # dir name
+    page = scrapy.Field() #
+    img_urls = scrapy.Field()
+

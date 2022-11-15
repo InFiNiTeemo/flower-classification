@@ -2,10 +2,13 @@ import os
 import json
 from datetime import date, timedelta, datetime
 
-
-def save_attr(dir_path, field, value):
+META = ".meta"
+def save_attr(dir_path, field, value, force_reset=False):
+    # force reset for not list type, such as int, float
+    if not isinstance(value, str):
+        value = str(value)
     # print('========',len(data),'=========')
-    file_path = os.path.join(dir_path, "meta")
+    file_path = os.path.join(dir_path, META)
     if not os.path.exists(dir_path):
         os.mkdir(dir_path)
     d = {}
@@ -15,6 +18,8 @@ def save_attr(dir_path, field, value):
                 d = json.load(f)
                 if str(value) not in d[field]:
                     d[field].append(value)
+                if force_reset:
+                    d[field] = [value]
                 #print("page visited: ", d['page'])
             except:
                 d[field] = [value]
@@ -24,15 +29,15 @@ def save_attr(dir_path, field, value):
         json.dump(d, fw)
 
 
-def get_attr(dir_path, field):
-    file_path = os.path.join(dir_path, "meta")
+def get_attr(dir_path, field, default=None) -> list:
+    file_path = os.path.join(dir_path, META)
     try:
         with open(file_path, "r") as f:
             d = json.load(f)
             return d[field]
             # print("page visited: ", d['page'])
     except:
-        return None
+        return default
 
 
 def save_attr_with_timeliness(dir_path, field, value, valid_time=3):

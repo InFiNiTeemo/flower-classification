@@ -1,11 +1,12 @@
 export OUTPUT_DIR="log"
-export OUTPUT_FILE="girl_output"
+export OUTPUT_FILE="flower_output"
 export MAIN=""
-# concat string
-for VARIABLE in $(seq 1 1 2)
-do export MAIN="$MAIN nohup python main.py >$OUTPUT_DIR/${OUTPUT_FILE}${VARIABLE} 2>&1 &"
-done
-eval "$MAIN"
 
+
+for VARIABLE in $(seq 1 51 100)
+do export MAIN="$MAIN nohup python main.py >$OUTPUT_DIR/${OUTPUT_FILE}${VARIABLE} 2>&1 &"
+echo "$MAIN"
+sleep 300s
+done
 
 #python main.py > log/flower_output 2>&1
